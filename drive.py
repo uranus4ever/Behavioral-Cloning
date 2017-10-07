@@ -55,7 +55,7 @@ class SimplePIController:
 
 
 controller = SimplePIController(0.1, 0.002)
-set_speed = 9
+set_speed = 10
 controller.set_desired(set_speed)
 
 
@@ -76,19 +76,19 @@ def telemetry(sid, data):
         img_array = resize(img, new_size=(64, 128))
         steering_angle = float(model.predict(img_array[None, :, :, :], batch_size=1))
 
-        # throttle = controller.update(float(speed))
+        throttle = controller.update(float(speed))
 
         # set throttle as constant. It can be changed.
-        throttle = 0.3
+        # throttle = 0.3
 
         print('steering_angle = {:.5f}, throttle = {:.1f}, speed = {}'.format(steering_angle, throttle, speed))
         send_control(steering_angle, throttle)
 
-        # # save frame
-        # if args.image_folder != '':
-        #     timestamp = datetime.utcnow().strftime('%Y_%m_%d_%H_%M_%S_%f')[:-3]
-        #     image_filename = os.path.join(args.image_folder, timestamp)
-        #     image.save('{}.jpg'.format(image_filename))
+        # save frame
+        if args.image_folder != '':
+            timestamp = datetime.utcnow().strftime('%Y_%m_%d_%H_%M_%S_%f')[:-3]
+            image_filename = os.path.join(args.image_folder, timestamp)
+            image.save('{}.jpg'.format(image_filename))
     else:
         # NOTE: DON'T EDIT THIS.
         sio.emit('manual', data={}, skip_sid=True)
@@ -114,7 +114,26 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Remote Driving')
     parser.add_argument('model', type=str,
                         help='Path to model definition json. Model weights should be on the same path.')
+    parser.add_argument(
+        'image_folder',
+        type=str,
+        nargs='?',
+        default='',
+        help='Path to image folder. This is where the images from the run will be saved.'
+    )
     args = parser.parse_args()
+
+    if args.image_folder != '':
+        print("Creating image folder at {}".format(args.image_folder))
+        if not os.path.exists(args.image_folder):
+            os.makedirs(args.image_folder)
+        else:
+            shutil.rmtree(args.image_folder)
+            os.makedirs(args.image_folder)
+        print("RECORDING THIS RUN ...")
+    else:
+        print("NOT RECORDING THIS RUN ...")
+
     with open(args.model, 'r') as jfile:
         model = model_from_json(json.load(jfile))
 

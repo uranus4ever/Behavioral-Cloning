@@ -20,87 +20,93 @@ The goals / steps of this project are the following:
 
 [//]: # (Image References)
 
-[image1]: ./examples/placeholder.png "Model Visualization"
+[image1]: ./img/track.png "Two Tracks"
 
-[image2]: ./examples/placeholder.png "Grayscaling"
+[image2]: ./img/three_camera_view.png "Three Camera View"
 
-[image3]: ./examples/placeholder_small.png "Recovery Image"
+[image3]: ./img/img_process.png "Image Process"
 
-[image4]: ./examples/placeholder_small.png "Recovery Image"
+[image4]: ./img/NVIDIA_model.JPG "Model Architecture"
 
-[image5]: ./examples/placeholder_small.png "Recovery Image"
+[image5]: ./img/model_evaluation.png "Model Accurency"
 
-[image6]: ./examples/placeholder_small.png "Normal Image"
+[image6]: ./img/img_process.png "Image Process"
 
-[image7]: ./examples/placeholder_small.png "Flipped Image"
-
-
-
-
-## Rubric Points
-
-###Here I will consider the [rubric points](https://review.udacity.com/#!/rubrics/432/view) individually and describe how I addressed each point in my implementation.  
+[image7]: ./img/img_process.png "Image Process"
 
 ---
 
-###Files Submitted & Code Quality
+###Usage
 
-
-
-
-####1. Submission includes all required files and can be used to run the simulator in autonomous mode
-
+####1. Content
 
 My project includes the following files:
 
-* ```model.py``` containing the script to create and train the model
+* ```BehavioralCloning.py``` containing the script to create and train the model
 
 * ```drive.py``` for driving the car in autonomous mode
 
 * ```model.h5``` containing a trained convolution neural network 
 
-* ```writeup_report.md``` summarizing the results
+* ```README.md``` summarizing the results
 
 
 ####2. Submission includes functional code
 
-Using the Udacity provided simulator and my drive.py file, the car can be driven autonomously around the track by executing 
+Using the Udacity provided [simulator](https://d17h27t6h515a5.cloudfront.net/topher/2017/February/58ae4419_windows-sim/windows-sim.zip) and my ```drive.py``` file, the car can be driven autonomously around the track by executing 
 
 ```sh
-python drive.py model.h5
+python drive.py model.json
 ```
 
-
-
-
-####3. Submission code is usable and readable
-
-The ```model.py``` file contains the code for training and saving the convolution neural network. The file shows the pipeline I used for training and validating the model, and it contains comments to explain how the code works.
-
+####3. Dependencies
+* Keras
+* TensorFlow
+* OpenCV
+* NumPy
+* SciPy
+* sklearn
 
 ###Model Architecture and Training Strategy
 
-####1. An appropriate model architecture has been employed
+####1. Image Pre-Process
 
-My model consists of a convolution neural network with 3x3 filter sizes and depths between 32 and 128 (model.py lines 18-24) 
+In order to increase model prediction accurancy and reduce training time, I pre-processed the images before feeding to the model with multiple techniques. First I crop the pixels in the top and bottom of the image, which contain mostly trees and hills, helpless to train the model. Secondly, I used Guassian blur to sharpen the images. Next, I noticed Track 1 is counter-clock based, namely left turn domined. Then I flipped images randomly with Bernoulli distribution. And lastly, to speed up training, I resized all images with 64x128.
+
+```
+def random_flip(image, steering_angle, flipping_prob=0.5):
+    head = bernoulli.rvs(flipping_prob)
+    if head:
+        return np.fliplr(image), -1 * steering_angle
+    else:
+        return image, steering_angle
+```
+
+![alt text][image1]
 
 The model includes RELU layers to introduce nonlinearity (code line 20), and the data is normalized in the model using a Keras lambda layer (code line 18). 
 
-####2. Attempts to reduce overfitting in the model
+####2. Model Architecture
 
-The model contains dropout layers in order to reduce overfitting (model.py lines 21). 
+Inspired by NVIDIA's [paper](https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf) "End to End Learning for Self-Driving Cars", my model architecture was similar to the following:
 
-The model was trained and validated on different data sets to ensure that the model was not overfitting (code line 10-16). The model was tested by running it through the simulator and ensuring that the vehicle could stay on the track.
+![alt text][image4]
 
 ####3. Model parameter tuning
 
-The model used an adam optimizer, so the learning rate was not tuned manually (model.py line 25).
+As the model used an Adam optimizer, the learning rate was not set manually.
 
 ####4. Appropriate training data
 
-Training data was chosen to keep the vehicle driving on the road. I used a combination of center lane driving, recovering from the left and right sides of the road ... 
+Training data was chosen to keep the vehicle driving on the road. I used a combination of center lane driving, recovering from the left and right sides of the road randomly with ```select_img``` function.
 
-For details about how I created the training data, see the next section. 
+Before model training starting, I shuffled and normalized data.
+
+####5. Model evaluation
+
+In order to gauge how well the model was working, I split my image and steering angle data into a training and validation set.
+
+![alt text][image5]
 
 ###Model Architecture and Training Strategy
 
@@ -120,13 +126,7 @@ The final step was to run the simulator to see how well the car was driving arou
 
 At the end of the process, the vehicle is able to drive autonomously around the track without leaving the road.
 
-####2. Final Model Architecture
 
-The final model architecture (model.py lines 18-24) consisted of a convolution neural network with the following layers and layer sizes ...
-
-Here is a visualization of the architecture (note: visualizing the architecture is optional according to the project rubric)
-
-![alt text][image1]
 
 ####3. Creation of the Training Set & Training Process
 
@@ -134,7 +134,7 @@ To capture good driving behavior, I first recorded two laps on track one using c
 
 ![alt text][image2]
 
-I then recorded the vehicle recovering from the left side and right sides of the road back to center so that the vehicle would learn to .... These images show what a recovery looks like starting from ... :
+I then recorded the vehicle recovering from the left side and right sides of the road back to center so that the vehicle would learn to steer back to the center if the vehicle drifts off to the side. These images show what a recovery looks like starting from ... :
 
 ![alt text][image3]
 
@@ -144,7 +144,7 @@ I then recorded the vehicle recovering from the left side and right sides of the
 
 Then I repeated this process on track two in order to get more data points.
 
-To augment the data sat, I also flipped images and angles thinking that this would ... For example, here is an image that has then been flipped:
+To augment the data sat, I also flipped images and angles thinking that this would help with left turn bias. For example, here is an image that has then been flipped:
 
 ![alt text][image6]
 
