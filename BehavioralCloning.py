@@ -12,6 +12,9 @@ import scipy.misc
 import math
 from sklearn.utils import shuffle
 import matplotlib.image as mpimg
+import errno
+import json
+import os
 
 
 def path(source_path):
@@ -95,6 +98,7 @@ def visualize(lines):
         plt.title(imtitle2[i])
     plt.show()
 
+
 def load_data(lines, batch_size):
     while True:
         x_batch = []
@@ -113,6 +117,45 @@ def load_data(lines, batch_size):
                 y_batch = []
 
 
+def silent_delete(file):
+    """
+    This method delete the given file from the file system if it is available
+    Source: http://stackoverflow.com/questions/10840533/most-pythonic-way-to-delete-a-file-which-may-not-exist
+    :param file:
+        File to be deleted
+    :return:
+        None
+    """
+    try:
+        os.remove(file)
+
+    except OSError as error:
+        if error.errno != errno.ENOENT:
+            raise
+
+def save_model(model, model_name='model.json', weights_name='model.h5'):
+    """
+    Save the model into the hard disk
+    :param model:
+        Keras model to be saved
+    :param model_name:
+        The name of the model file
+    :param weights_name:
+        The name of the weight file
+    :return:
+        None
+    """
+    silent_delete(model_name)
+    silent_delete(weights_name)
+
+    json_string = model.to_json()
+    with open(model_name, 'w') as outfile:
+        json.dump(json_string, outfile)
+
+    model.save_weights(weights_name)
+
+
+
 lines = []
 with open('./data/driving_log.csv') as csvfile:
     reader = csv.reader(csvfile)
@@ -125,7 +168,7 @@ print('num_data = {}'.format(num_data))
 
 model = Sequential()
 model.add(Lambda(lambda x: x / 255.0 - 0.5, input_shape=(64, 128, 3)))
-
+# model.add(Cropping2D(cropping=((70,25), (0,0))))
 model.add(Convolution2D(24, 5, 5, border_mode='same', subsample=(2, 2)))
 model.add(Activation(activation="relu"))
 model.add(MaxPooling2D(pool_size=(2, 2), strides=(1, 1)))
@@ -174,24 +217,56 @@ training_num = math.ceil(num_data * 0.8/batch_size)*batch_size
 validation_num = math.ceil(num_data * 0.2/batch_size)*batch_size
 result = model.fit_generator(generator=load_data(lines[:training_num], batch_size),
                              samples_per_epoch=training_num,
-                             nb_epoch=3,
+                             nb_epoch=2,
                              validation_data=load_data(lines[-validation_num:], batch_size),
                              nb_val_samples=validation_num,
                              verbose=1)
 
+#
+# images = []
+# measurements = []
+# for line in lines:
+#     source_path = line[0]
+#     filename = source_path.split('\\')[-1]
+#     current_path = './data/IMG/' + filename
+#     image = cv2.imread(current_path)
+#     images.append(resize(image, new_size=(64,128)))
+#     measurement = float(line[3])
+#     measurements.append(measurement)
+#
+# X_train = np.array(images)
+# y_train = np.array(measurements)
+#
+# model = Sequential()
+# model.add(Lambda(lambda x: x/255.0 - 0.5, input_shape=(64,128,3)))
+# # model.add(Cropping2D(cropping=((70,25),(0,0))))
+# model.add(Convolution2D(6,5,5,activation="relu"))
+# model.add(MaxPooling2D())
+# model.add(Convolution2D(6,5,5,activation="relu"))
+# model.add(MaxPooling2D())
+# model.add(Flatten())
+# model.add(Dense(120))
+# model.add(Dense(84))
+# model.add(Dense(1))
+# model.compile(loss='mse', optimizer='adam')
+# model.summary()
+# model.fit(X_train, y_train, validation_split=0.2, shuffle=True,
+#           nb_epoch=2)
+
 # ## print the keys contained in the history object
 # print(result.history.keys())
-model.save('model.h5')
+# model.save('model.h5', overwrite=True)
+save_model(model)
 print("Model Saved.")
 
 # ### plot the training and validation loss for each epoch
-plt.figure()
-plt.plot(result.epoch, result.history['loss'])
-plt.plot(result.epoch, result.history['val_loss'])
-plt.title('model mean squared error loss')
-plt.ylabel('mean squared error loss')
-plt.xlabel('epoch')
-plt.legend(['training set', 'validation set'], loc='upper right')
-plt.ylim([0, 0.1])
-plt.show()
+# plt.figure()
+# plt.plot(result.epoch, result.history['loss'])
+# plt.plot(result.epoch, result.history['val_loss'])
+# plt.title('model mean squared error loss')
+# plt.ylabel('mean squared error loss')
+# plt.xlabel('epoch')
+# plt.legend(['training set', 'validation set'], loc='upper right')
+# plt.ylim([0, 0.1])
+# plt.show()
 
