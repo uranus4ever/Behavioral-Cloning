@@ -26,12 +26,13 @@ prev_image_array = None
 
 def crop_img(image):
     top = 70
-    bottom = image.shape[0] - 20
+    bottom = image.shape[0] - 25
     return image[top:bottom, :]
 
 
 def resize(image, new_size):
     return scipy.misc.imresize(image, new_size)
+
 
 class SimplePIController:
     def __init__(self, Kp, Ki):
@@ -55,7 +56,7 @@ class SimplePIController:
 
 
 controller = SimplePIController(0.1, 0.002)
-set_speed = 10
+set_speed = 15
 controller.set_desired(set_speed)
 
 
@@ -73,13 +74,13 @@ def telemetry(sid, data):
         image = Image.open(BytesIO(base64.b64decode(imgString)))
         image_array = np.asarray(image)
         img = crop_img(image_array)
-        img_array = resize(img, new_size=(64, 128))
+        img_array = resize(img, new_size=(32, 128))
         steering_angle = float(model.predict(img_array[None, :, :, :], batch_size=1))
 
         throttle = controller.update(float(speed))
 
         # set throttle as constant. It can be changed.
-        # throttle = 0.3
+        # throttle = 0.2 if float(speed) <= 18 else 0.1
 
         print('steering_angle = {:.5f}, throttle = {:.1f}, speed = {}'.format(steering_angle, throttle, speed))
         send_control(steering_angle, throttle)
