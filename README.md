@@ -1,9 +1,9 @@
-﻿#**Behavioral Cloning** 
+﻿# **Behavioral Cloning** 
 
 
 ---
 
-**Overview**
+### **Overview**
 
 This project aims to clone human driving behavior in the [simulator](https://d17h27t6h515a5.cloudfront.net/topher/2017/February/58ae4419_windows-sim/windows-sim.zip) with a Deep Learning Neural Network. During the training phase, I used keyboard to drive the car. Then the images and steering angles recorded are the input to train the model. After then in autonomous mode, the model predicted steering angle accoring to images the car "saw" and self drove. Finally the model performance is tested on both tracks as the following animations.
 
@@ -20,7 +20,7 @@ This project aims to clone human driving behavior in the [simulator](https://d17
 
 [image3]: ./img/img_process.png "Image Process"
 
-[image4]: ./img/NVIDIA_model.JPG "Model Architecture"
+[image4]: ./img/NVIDIA_model.png "Model Architecture"
 
 [image5]: ./img/model_evaluation.png "Model Accurency"
 
@@ -30,9 +30,9 @@ This project aims to clone human driving behavior in the [simulator](https://d17
 
 ---
 
-###Usage
+### Usage
 
-####1. Content
+#### 1. Content
 
 My project includes the following files:
 
@@ -47,7 +47,7 @@ My project includes the following files:
 * ``` Track1.mp4``` and ```Track2.mp4``` showing self-driving mode
 
 
-####2. How to run the code
+#### 2. How to run the code
 
 Using the Udacity provided simulator and my ```drive.py``` file, the car can be driven autonomously around the track by executing 
 
@@ -58,7 +58,7 @@ The simulator provides two tracks, lake track (easy mode) and hill track (hard m
 
 ![alt text][image1]
 
-####3. Dependencies
+#### 3. Dependencies
 * Keras
 * TensorFlow
 * OpenCV
@@ -66,9 +66,9 @@ The simulator provides two tracks, lake track (easy mode) and hill track (hard m
 * SciPy
 * sklearn
 
-###Model Architecture and Training Strategy
+### Model Architecture and Training Strategy
 
-####1. Data Augment and Pre-Process
+#### 1. Data Augment and Pre-Process
 
 In order to increase model prediction accurancy and reduce training time, I pre-processed the images before feeding to the model with multiple techniques. 
 
@@ -101,28 +101,30 @@ def random_flip(image, steering_angle, flipping_prob=0.5):
 
 * **Resize**. To speed up training, I resized all images with 32x128.
 
-####2. Appropriate Training Data
+#### 2. Appropriate Training Data
 
 Training data was chosen to keep the vehicle driving on the road. I used a combination of center lane driving, left and right sides of the road randomly with ```select_img``` function, and use ```angle_correction=0.23``` to correct left or right camera.
 
 I collected about 40 minutes of driving on Track 1. It contains both **smooth** driving style (mostly stay in the middle of the road) and **recovery** driving style (drive off the middle and then steer to the middle).
 
 
-####3. Model Architecture
+#### 3. Model Architecture
 
 Inspired by NVIDIA's [paper](https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf) "End to End Learning for Self-Driving Cars", my model architecture was similar to the following:
 
 ![alt text][image4]
 
+The structure is not complex and works pretty well.
 In addition, **generator** is used to process a large amount of data batch by batch.
+In terms of model save function, I referred [upul's code](https://github.com/upul/Behavioral-Cloning/blob/master/helper.py).
 
-####4. Model Evaluation
+#### 4. Model Evaluation
 
 Over 20k training data was collected. To combat overfit, I shuffle the data before feeding into the model. In order to gauge how well the model was working, I split 20% training data into validation set. The mean square error loss figure shows the training loss is very close to validation loss after 5 epochs, which means the model is neither underfit nor overfit. 
 
 ![alt text][image5]
 
-###Reflection
+### Reflection
 
 In real human driving, there are only two inputs need to be controlled - speed (throttle and brake) and steering angle. Behavioral cloning is the amazing idea to teach machine how to self-drive with Neural Networks to control these two parameters. Back to this project, the followings are worthy to be improved:
 
