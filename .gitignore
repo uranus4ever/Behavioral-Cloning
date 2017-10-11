@@ -2,3 +2,11 @@
 *.xml
 *.iml
 data_pickle.p
+*.jpg
+*.pyc
+cmd.txt
+GIF_maker.py
+balance.py
+BehavioralCloning.py
+data_backup/driving_log_full.csv
+drive.py

@@ -11,14 +11,16 @@ import errno
 import json
 import os
 from keras.models import Sequential
-from keras.layers import Flatten, Dense, Lambda, Activation, Cropping2D
+from keras.layers import Flatten, Dense, Lambda, Activation, Cropping2D, Dropout
 from keras.layers.convolutional import Convolution2D
 from keras.layers.pooling import MaxPooling2D
 from keras.optimizers import Adam
+from random import sample
+
 
 def path(source_path):
     filename = source_path.split('\\')[-1]
-    current_path = './data/IMG/' + filename
+    current_path = data_path + 'IMG/' + filename
     return current_path
 
 
@@ -79,8 +81,9 @@ def resize(image, new_size):
 def process_img(image, steering_angle):
     crop = crop_img(image)
     gamma = random_gamma(crop)
-    blur_img = blur(gamma)
-    flip_img, steering_angle = random_flip(blur_img, steering_angle, flipping_prob=0.5)
+    # blur_img = blur(gamma)
+    shadow_img = shadow(gamma)
+    flip_img, steering_angle = random_flip(shadow_img, steering_angle, flipping_prob=0.5)
     small_img = resize(flip_img, new_size=(32, 128))
     return small_img, steering_angle
 
@@ -178,7 +181,7 @@ def silent_delete(file):
             raise
 
 
-def save_model(model, model_name='model.json', weights_name='model.h5'):
+def save_model(model, model_name='model_balanced_2.json', weights_name='model_balanced_2.h5'):
     """
     Save the model into the hard disk
     :param model:
@@ -200,7 +203,7 @@ def save_model(model, model_name='model.json', weights_name='model.h5'):
     model.save_weights(weights_name)
 
 
-def model():
+def Model(lines_data):
     model = Sequential()
     model.add(Lambda(lambda x: x / 255.0 - 0.5, input_shape=(32, 128, 3)))
     # model.add(Cropping2D(cropping=((70,25), (0,0))))
@@ -229,6 +232,7 @@ def model():
     # Next, five fully connected layers
     model.add(Dense(1164))
     model.add(Activation(activation="relu"))
+    model.add(Dropout(0.5))
 
     model.add(Dense(100))
     model.add(Activation(activation="relu"))
@@ -243,17 +247,20 @@ def model():
 
     model.summary()
 
-    batch_size = 128
-    # learning_rate = 1e-4
+    batch_size = 64
+    learning_rate = 1e-4
 
-    model.compile(optimizer="adam", loss="mse")
+    model.compile(optimizer=Adam(learning_rate), loss="mse", metrics=["accuracy"])
 
-    training_num = math.ceil(num_data * 0.8/batch_size)*batch_size
-    validation_num = math.ceil(num_data * 0.2/batch_size)*batch_size
-    result = model.fit_generator(generator=load_data(lines[:training_num], batch_size),
+    print('Total data number = {}'.format(len(lines_data)))
+    training_num = math.ceil(len(lines_data) * 0.8/batch_size)*batch_size
+    print('Training data number = {}'.format(training_num))
+    validation_num = math.ceil(len(lines_data) * 0.2/batch_size)*batch_size
+    print('Validation data number = {}'.format(validation_num))
+    result = model.fit_generator(generator=load_data(lines_data[:training_num], batch_size),
                                  samples_per_epoch=training_num,
-                                 nb_epoch=5,
-                                 validation_data=load_data(lines[-validation_num:], batch_size),
+                                 nb_epoch=10,
+                                 validation_data=load_data(lines_data[-validation_num:], batch_size),
                                  nb_val_samples=validation_num,
                                  verbose=1)
 
@@ -272,14 +279,57 @@ def model():
     plt.show()
 
 
-lines = []
-with open('./data/driving_log.csv') as csvfile:
-    reader = csv.reader(csvfile)
-    for row in reader:
-        lines.append(row)
-num_data = len(lines)
-lines = shuffle(lines)
-print('num_data = {}'.format(num_data))
+def balance(lines, num_bins=500, save_csv=False, plot_histogram=False):
+
+    bin_n = 300  # N of examples to include in each bin (at most)
+    balance_box = []
+    start = 0
+    len_bin = []
+    for end in np.linspace(0, 1, num=num_bins)[1:]:
+
+        idx = (angles >= start) & (angles < end)
+        n_num = min(bin_n, angles[idx].shape[0])
+
+        sample_idx = sample(range(angles[idx].shape[0]), n_num)
+        lines_range = np.array(lines)[idx].tolist()
+        len_bin.append(len(sample_idx))
+        for i in range(len(sample_idx)):
+            balance_box.append(lines_range[sample_idx[i]])
+        start = end
+
+    print('Balanced data number = {}'.format(len(balance_box)))
+
+    if plot_histogram:
+
+        plt.figure(figsize=(10, 4))
+        rect = plt.bar((np.linspace(0, 1, num=num_bins)[1:]), height=len_bin, width=0.001, alpha=0.6)
+        plt.ylim(0, 320)
+        plt.xlim(0, 1.)
+        plt.title('Steering Angle Distribution')
+
+    if save_csv:
+        with open(data_path + 'driving_log_balanced.csv') as csvfile_balance:
+            writer = csv.writer(csvfile_balance)
+            writer.writerow(balance_box)
+            csvfile_balance.close()
+
+    return balance_box
 
 if __name__ == "__main__":
-    model()
+
+    lines = []
+    angles = []
+    data_path = './data_backup/'
+    with open(data_path + 'driving_log_full.csv') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            lines.append(row)
+            angles.append(np.absolute(float(row[3])))
+    angles = np.array(angles)
+    num_data = len(lines)
+    lines = shuffle(lines)
+    balanced_data = balance(lines, num_bins=500, save_csv=False, plot_histogram=False)
+
+
+    print('num_data = {}'.format(len(balanced_data)))
+    Model(balanced_data)

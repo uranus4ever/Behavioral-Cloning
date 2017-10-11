@@ -56,7 +56,7 @@ class SimplePIController:
 
 
 controller = SimplePIController(0.1, 0.002)
-set_speed = 15
+set_speed = 8
 controller.set_desired(set_speed)
 
 
@@ -77,10 +77,10 @@ def telemetry(sid, data):
         img_array = resize(img, new_size=(32, 128))
         steering_angle = float(model.predict(img_array[None, :, :, :], batch_size=1))
 
-        throttle = controller.update(float(speed))
+        # throttle = controller.update(float(speed))
 
         # set throttle as constant. It can be changed.
-        # throttle = 0.2 if float(speed) <= 18 else 0.1
+        throttle = 0.3 if float(speed) >= 8 else 0.5
 
         print('steering_angle = {:.5f}, throttle = {:.1f}, speed = {}'.format(steering_angle, throttle, speed))
         send_control(steering_angle, throttle)
