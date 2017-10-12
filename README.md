@@ -5,11 +5,12 @@
 
 ### **Overview**
 
-This project aims to clone human driving behavior in the [simulator](https://d17h27t6h515a5.cloudfront.net/topher/2017/February/58ae4419_windows-sim/windows-sim.zip) with a Deep Learning Neural Network. During the training phase, I used keyboard to drive the car. Then the images and steering angles recorded are the input to train the model. After then in autonomous mode, the model predicted steering angle accoring to images the car "saw" and self drove. Finally the model performance is tested on both tracks as the following animations.
+This project aims to clone human driving behavior in the [simulator](https://d17h27t6h515a5.cloudfront.net/topher/2017/February/58ae4419_windows-sim/windows-sim.zip) with a Deep Learning Neural Network, namely end to end transfer learning. During the training phase, I used keyboard to drive the car on Track1. Then the images and steering angles recorded are the input to train the model. After then in autonomous mode, the model predicted steering angle accoring to images the car "saw" and self steered. Finally the model performance is tested on both tracks as the following animations, it can self-drive endlessly on Track1.
 
-| Track 1 | Track 2|
+| Track 1 - Training | Track 2 - Validation|
 | :-: | :-: |
 | ![alt text][image6] | ![alt text][image7] |
+| ![alt text][video1] | ![alt text][video2] |
 
 
 [//]: # (Image References)
@@ -22,11 +23,17 @@ This project aims to clone human driving behavior in the [simulator](https://d17
 
 [image4]: ./img/NVIDIA_model.png "Model Architecture"
 
-[image5]: ./img/model_evaluation.png "Model Accurency"
+[image5]: ./img/model_evaluation_balance.png "Model Accurency"
 
 [image6]: ./img/Track1_gif.gif "Track1 gif"
 
 [image7]: ./img/Track2_gif.gif "Track2 gif"
+
+[image8]: ./img/Steering_angle_distribution.png "Steering Angle Distribution"
+
+[video1]: ./Track1.mp4 "Track1 video"
+
+[video2]: ./Track2.mp4 "Track2 video"
 
 ---
 
@@ -36,15 +43,15 @@ This project aims to clone human driving behavior in the [simulator](https://d17
 
 My project includes the following files:
 
-* ```model.py``` containing the script to create and train the model
+* `model.py` containing the script to create and train the model
 
-* ```drive.py``` for driving the car in autonomous mode
+* `drive.py` for driving the car in autonomous mode
 
-* ```model.h5``` containing a trained convolution neural network 
+* `model_balanced.h5` and `model_balanced.json` for a trained convolution neural network with weight
 
-* ```README.md``` summarizing the results
+* `README.md` summarizing the results
 
-* ``` Track1.mp4``` and ```Track2.mp4``` showing self-driving mode
+* ` Track1.mp4` and `Track2.mp4` showing self-driving mode
 
 
 #### 2. How to run the code
@@ -52,7 +59,7 @@ My project includes the following files:
 Using the Udacity provided simulator and my ```drive.py``` file, the car can be driven autonomously around the track by executing 
 
 ```sh
-python drive.py model.json file_name
+python drive.py model_balanced.json run1
 ```
 The simulator provides two tracks, lake track (easy mode) and hill track (hard mode).
 
@@ -68,13 +75,39 @@ The simulator provides two tracks, lake track (easy mode) and hill track (hard m
 
 ### Model Architecture and Training Strategy
 
-#### 1. Data Augment and Pre-Process
+#### 1. Appropriate Training Data
 
-In order to increase model prediction accurancy and reduce training time, I pre-processed the images before feeding to the model with multiple techniques. 
+Training data was collected in the simulator controled by myself to keep the vehicle driving in the middle of road. I collected over **one hour equivalent time** of driving on Track 1, which contained about 25k data and 75k images. In terms of driving mode, it contained both **smooth** driving style (mostly stay in the middle of the road) and **recovery** driving style (drive off the middle and then steer to the middle).
+
+I used a combination of center camera, left and right camera randomly with `select_img` function, and use `angle_correction=0.23` to correct left or right camera.
+
+After multiple model training, it is found that in autonomous mode, the car performas far from expected to pull back to the middle if off the middel. And root cause is the **uneven** training data. Concretely, most of (>90%) steering angles are close to zero, so trained model could not predict a correct hard turn angle when needed. To combat with that, I extract the angle data (range(-1, 1)), absolute and balance them with the following code (inspired by [navoshta](https://github.com/navoshta/behavioral-cloning)):
+
+```
+num_bins = 500 # interval in (0,1)
+bin_n = 300  # Maximum number in each bin
+balance_box = []
+start = 0
+for end in np.linspace(0, 1, num=num_bins)[1:]:
+    idx = (angles >= start) & (angles < end)
+    n_num = min(bin_n, angles[idx].shape[0])
+    sample_idx = sample(range(angles[idx].shape[0]), n_num)
+    lines_range = np.array(lines)[idx].tolist()
+    for i in range(len(sample_idx)):
+        balance_box.append(lines_range[sample_idx[i]])
+    start = end
+```
+After this balance data filter, there are 6824 data left, distributing as follows:
+
+![alt text][image8]
+
+#### 2. Data Augment and Pre-Process
+
+In order to increase model prediction accurancy and reduce training time, I pre-processed the images before feeding into the model with multiple techniques. 
 
 * **Crop**. I cropped the pixels in the top and bottom of the image, which contain mostly trees and hills, helpless to train the model.
 
-* **Random Gamma**. To make algorithm robust to deal with shadows, brightness is randomly reset with this [reference](http://www.pyimagesearch.com/2015/10/05/opencv-gamma-correction/)
+* **Random Gamma**. To make algorithm robust to deal with frames with dark background color, brightness is randomly reset with this [reference](http://www.pyimagesearch.com/2015/10/05/opencv-gamma-correction/).
 ```
 def random_gamma(image):
     gamma = np.random.uniform(0.4, 1.5)
@@ -83,12 +116,7 @@ def random_gamma(image):
                       for i in np.arange(0, 256)]).astype("uint8")
     return cv2.LUT(image, table)
 ```
-* **Sharpen**. Guassian blur is used to sharpen the images. 
-```
-def blur(img):
-    gb = cv2.GaussianBlur(img, (5,5), 20.0)
-    return cv2.addWeighted(img, 2, gb, -1, 0)
-```
+
 * **Flip**. I noticed Track 1 is counter-clock based, namely left turn domined. Then I flipped images randomly with Bernoulli distribution. 
 ```
 def random_flip(image, steering_angle, flipping_prob=0.5):
@@ -101,12 +129,7 @@ def random_flip(image, steering_angle, flipping_prob=0.5):
 
 * **Resize**. To speed up training, I resized all images with 32x128.
 
-#### 2. Appropriate Training Data
-
-Training data was chosen to keep the vehicle driving on the road. I used a combination of center lane driving, left and right sides of the road randomly with ```select_img``` function, and use ```angle_correction=0.23``` to correct left or right camera.
-
-I collected about 40 minutes of driving on Track 1. It contains both **smooth** driving style (mostly stay in the middle of the road) and **recovery** driving style (drive off the middle and then steer to the middle).
-
+![alt text][image3]
 
 #### 3. Model Architecture
 
@@ -114,13 +137,13 @@ Inspired by NVIDIA's [paper](https://images.nvidia.com/content/tegra/automotive/
 
 ![alt text][image4]
 
-The structure is not complex and works pretty well.
-In addition, **generator** is used to process a large amount of data batch by batch.
-In terms of model save function, I referred [upul's code](https://github.com/upul/Behavioral-Cloning/blob/master/helper.py).
+The structure is not complex and works pretty well. To avoid overfitting, I applied dropout technique.
+In addition, **generator** is used to process a large amount of data batch by batch. And I ran the model training on [Floydhub](https://www.floydhub.com) for GPU cloud computing.
+In terms of model save function, thanks to [upul's code](https://github.com/upul/Behavioral-Cloning/blob/master/helper.py).
 
 #### 4. Model Evaluation
 
-Over 20k training data was collected. To combat overfit, I shuffle the data before feeding into the model. In order to gauge how well the model was working, I split 20% training data into validation set. The mean square error loss figure shows the training loss is very close to validation loss after 5 epochs, which means the model is neither underfit nor overfit. 
+In order to gauge how well the model was working, I split 20% training data into validation set. The mean square error loss figure shows the training loss is very close to validation loss after 10 epochs, which means the model is neither underfit nor overfit. 
 
 ![alt text][image5]
 
@@ -128,11 +151,12 @@ Over 20k training data was collected. To combat overfit, I shuffle the data befo
 
 In real human driving, there are only two inputs need to be controlled - speed (throttle and brake) and steering angle. Behavioral cloning is the amazing idea to teach machine how to self-drive with Neural Networks to control these two parameters. Back to this project, the followings are worthy to be improved:
 
- - Most of the steering angles in the training are close to 0 because human can look ahead the track and keep car under control. But it helps less for model prediction as it can only "see" the current view.
- - Data augment needs to be further explored. This technique can increditibly save training time, in other words, if in the real life, saving development time and cost.
+ - The performance on Track2 is not as good as on Track1, it drove off the road after half of rap, due to much more hard turns, complex shadows and dark light. To improve that, more targeted data augment techniques and more training data with hard turn need to be taken.
+ - Data augment needs to be further explored. This technique can increditibly save training time, if in the real life, saving development time and cost.
 
 When it comes to extensions and future directions, I would like to highlight the followings:
 
+ - In current simulator autonomous mode, only steering angle is learned. To step further, throttle control could also be learned from human. (At present it is controled by PID)
  - Train a model in real road driving with a new simulator.
  - Experiment with other Neural Network models, for example, Recurrent Neural Network or Reinforcement Learning structure.
 
