@@ -117,18 +117,22 @@ def visualize(lines):
     plt.show()
 
     # plot image process
-    img = mpimg.imread(p[1])
-    crop = crop_img(img)
-    shadow_img = random_gamma(crop)
-    bl = blur(shadow_img)
-    flip = np.fliplr(bl)
-    resz = resize(flip, (32,128))
-    imgs = [crop, shadow_img, bl, flip, resz]
+    imgs = []
+    for i in range(3):
+        img = mpimg.imread(p[i])
+        crop = crop_img(img)
+        imgs.append(crop)
+    gamma = random_gamma(imgs[0])
+    flip = np.fliplr(imgs[1])
+    shadow_img = shadow(imgs[2])
+    imgs.append(gamma)
+    imgs.append(flip)
+    imgs.append(shadow_img)
 
-    plt.figure(figsize=(16, 6))
-    imtitle2 = ['Crop', 'Random Gamma', 'Sharpen', 'Flip', 'Resize']
-    for i in range(5):
-        plt.subplot(1, 5, i+1)
+    plt.figure(figsize=(16, 4))
+    imtitle2 = ['Left', 'Center', 'Right', 'Random Gamma', 'Flip', 'Random Shadow']
+    for i in range(6):
+        plt.subplot(2, 3, i+1)
         plt.imshow(imgs[i])
         plt.axis('off')
         plt.title(imtitle2[i])

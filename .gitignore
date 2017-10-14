@@ -10,3 +10,5 @@ balance.py
 BehavioralCloning.py
 data_backup/driving_log_full.csv
 drive.py
+data_backup/driving_log_track2.csv
+model_track2.py
