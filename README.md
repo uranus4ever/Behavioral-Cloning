@@ -17,9 +17,7 @@ This project aims to clone human driving behavior in the [simulator](https://d17
 
 [image1]: ./img/track_view.png "Two Tracks"
 
-[image2]: ./img/three_camera_view.png "Three Camera View"
-
-[image3]: ./img/img_process.png "Image Process"
+[image3]: ./img/image_process.png "Image Process"
 
 [image4]: ./img/NVIDIA_model.png "Model Architecture"
 
