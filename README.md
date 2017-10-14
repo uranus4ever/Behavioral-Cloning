@@ -5,12 +5,12 @@
 
 ### **Overview**
 
-This project aims to clone human driving behavior in the [simulator](https://d17h27t6h515a5.cloudfront.net/topher/2017/February/58ae4419_windows-sim/windows-sim.zip) with a Deep Learning Neural Network, namely end to end transfer learning. During the training phase, I used keyboard to drive the car on Track1. Then the images and steering angles recorded are the input to train the model. After then in autonomous mode, the model predicted steering angle accoring to images the car "saw" and self steered. Finally the model performance is tested on both tracks as the following animations, it can self-drive endlessly on Track1.
+This project aims to clone human driving behavior in the [simulator](https://d17h27t6h515a5.cloudfront.net/topher/2017/February/58ae4419_windows-sim/windows-sim.zip) with a Deep Learning Neural Network, namely end to end learning. During the training phase, I used keyboard to drive the car on Track1. Then the images and steering angles recorded are the input to feed the neural network model. After then in autonomous mode, the model predicted steering angle accoring to images the car "saw" and self steered. Finally the model performance is tested on both tracks as the following animations, it can self-drive stably and endlessly on tracks.
 
 | Track 1 - Training | Track 2 - Validation|
 | :-: | :-: |
-| ![alt text][image6] | ![alt text][image7] |
-| ![alt text][video1] | ![alt text][video2] |
+| ![alt text][gif1] | ![alt text][gif2] |
+| ![Track1.mp4][video1] | ![Track2.mp4][video2] |
 
 
 [//]: # (Image References)
@@ -25,9 +25,9 @@ This project aims to clone human driving behavior in the [simulator](https://d17
 
 [image5]: ./img/model_evaluation_balance.png "Model Accurency"
 
-[image6]: ./img/Track1_gif.gif "Track1 gif"
+[gif1]: ./img/Track1_gif.gif "Track1 gif"
 
-[image7]: ./img/Track2_gif.gif "Track2 gif"
+[gif2]: ./img/Track2_gif.gif "Track2 gif"
 
 [image8]: ./img/Steering_angle_distribution.png "Steering Angle Distribution"
 
@@ -48,8 +48,6 @@ My project includes the following files:
 * `drive.py` for driving the car in autonomous mode
 
 * `model_balanced.h5` and `model_balanced.json` for a trained convolution neural network with weight
-
-* `README.md` summarizing the results
 
 * ` Track1.mp4` and `Track2.mp4` showing self-driving mode
 
@@ -77,11 +75,11 @@ The simulator provides two tracks, lake track (easy mode) and hill track (hard m
 
 #### 1. Appropriate Training Data
 
-Training data was collected in the simulator controled by myself to keep the vehicle driving in the middle of road. I collected over **one hour equivalent time** of driving on Track 1, which contained about 25k data and 75k images. In terms of driving mode, it contained both **smooth** driving style (mostly stay in the middle of the road) and **recovery** driving style (drive off the middle and then steer to the middle).
+Training data was collected in the simulator run by myself. I collected over **one hour equivalent time** of driving on Track 1, which contained about 25k data and 75k images. In terms of driving mode, it contained both **smooth** driving style (mostly stay in the middle of the road) and **recovery** driving style (drive off the middle and then steer to the middle).
 
 I used a combination of center camera, left and right camera randomly with `select_img` function, and use `angle_correction=0.23` to correct left or right camera.
 
-After multiple model training, it is found that in autonomous mode, the car performas far from expected to pull back to the middle if off the middel. And root cause is the **uneven** training data. Concretely, most of (>90%) steering angles are close to zero, so trained model could not predict a correct hard turn angle when needed. To combat with that, I extract the angle data (range(-1, 1)), absolute and balance them with the following code (inspired by [navoshta](https://github.com/navoshta/behavioral-cloning)):
+After multiple model training, it is found that in autonomous mode, the car performas far from expected to pull back to the center if off the middle. Its root cause is the **uneven** training data. Concretely, most of (>90%) steering angles are close to zero, so trained model could not predict a correct turn angle when needed. To combat with that, I extract the angle data (range[-1, 1]), absolute and balance them with the following code (inspired by [navoshta](https://github.com/navoshta/behavioral-cloning)):
 
 ```
 num_bins = 500 # interval in (0,1)
@@ -116,8 +114,9 @@ def random_gamma(image):
                       for i in np.arange(0, 256)]).astype("uint8")
     return cv2.LUT(image, table)
 ```
+* **Random Shadow**. Shadow is the main difficulty to mislead the car to steer. To combat with that, apply random shadow in the training set to mimic various kinds of shadows.
 
-* **Flip**. I noticed Track 1 is counter-clock based, namely left turn domined. Then I flipped images randomly with Bernoulli distribution. 
+* **Flip**. Track 1 is counter-clock based, namely left turn domined. Then I flipped images randomly with Bernoulli distribution. 
 ```
 def random_flip(image, steering_angle, flipping_prob=0.5):
     head = bernoulli.rvs(flipping_prob)
@@ -149,14 +148,14 @@ In order to gauge how well the model was working, I split 20% training data into
 
 ### Reflection
 
-In real human driving, there are only two inputs need to be controlled - speed (throttle and brake) and steering angle. Behavioral cloning is the amazing idea to teach machine how to self-drive with Neural Networks to control these two parameters. Back to this project, the followings are worthy to be improved:
+In real human driving, there are only two inputs need to be controlled - speed (throttle and brake) and steering angle. Behavioral cloning is an amazing idea to teach machine how to self-drive with neural networks to control these two parameters. Back to this project, the followings are worthy to be improved:
 
- - The performance on Track2 is not as good as on Track1, it drove off the road after half of rap, due to much more hard turns, complex shadows and dark light. To improve that, more targeted data augment techniques and more training data with hard turn need to be taken.
- - Data augment needs to be further explored. This technique can increditibly save training time, if in the real life, saving development time and cost.
+ - The performance on Track2 is not as good as on Track1, due to much more hard turns, complex shadows and dark light. To improve that, more targeted data augment techniques and more training data with hard turn need to be taken.
+ - Data augment needs to be further explored. This technique can increditibly save training time, if in reality, saving development time and cost.
 
 When it comes to extensions and future directions, I would like to highlight the followings:
 
- - In current simulator autonomous mode, only steering angle is learned. To step further, throttle control could also be learned from human. (At present it is controled by PID)
+ - In current simulator autonomous mode, only steering angle is learned. To step further, throttle control could also be learned from human behaviour. (At present it is controled by PID)
  - Train a model in real road driving with a new simulator.
  - Experiment with other Neural Network models, for example, Recurrent Neural Network or Reinforcement Learning structure.
 
